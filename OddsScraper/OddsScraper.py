@@ -5,13 +5,28 @@ from __future__ import print_function
 from bs4 import BeautifulSoup
 import lxml
 import httplib2
-import io, os, stat, time
+import io
+import os
+import stat
+import time
+import fractions
 
+
+class Match:
+    def __init__(self, teamA, oddsA, teamB, oddsB, oddsDraw, url):
+        self.teamA = teamA
+        self.oddsA = parseFraction(oddsA.replace("(","").replace(")",""))
+        self.teamB = teamB
+        self.oddsB = parseFraction(oddsB.replace("(","").replace(")",""))
+        self.oddsDraw = parseFraction(oddsDraw.replace("(","").replace(")",""))
+        self.url = url
 
 def main():
-    fileName = "tmp"
 
-    content = getData("http://www.oddschecker.com/football/other/sweden/allsvenskan", fileName)
+    domain = 'http://www.oddschecker.com/'
+    cacheFile = "tmp"
+
+    content = getData(domain + "football/other/sweden/allsvenskan", cacheFile)
 
 
 
@@ -20,20 +35,24 @@ def main():
 
     for row in rows:
         colums = row.find_all('td')
-        for colum in colums:
-            print(colum.text, end = '\t')
-        print('')
+        url = row.find('a','button')
+        odds = row.find_all('span', 'odds')
+        teams = row.find_all('span', 'fixtures-bet-name')
 
+        Match(teams[0].text, odds[0].text, teams[2].text, odds[2].text, odds[1].text, url.attrs['href'])
+        
 
+def parseFraction(txt):
+    return float(fractions.Fraction(txt))
 
-def getData(url, fileName):
+def getData(url, cacheFile):
     try:
-        age = time.time() - os.stat(fileName)[stat.ST_MTIME]
+        age = time.time() - os.stat(cacheFile)[stat.ST_MTIME]
         if age > 600:
             print("Cached file is old, downloading new")
             raise NotImplementedError
 
-        file = io.open(fileName)
+        file = io.open(cacheFile)
         content = file.read()
         file.close()
         if len(content) < 23:
@@ -43,12 +62,12 @@ def getData(url, fileName):
     except:
         resp, contentNoDecode = httplib2.Http().request(url)
         content = unicode(contentNoDecode, 'utf-8')
-        file = io.open(fileName, mode = 'w+')
+        file = io.open(cacheFile, mode = 'w+')
         file.write(content)
         file.close()
     return content
 
 
-
-if __name__=="__main__":
+    
+if __name__ == "__main__":
    main()
