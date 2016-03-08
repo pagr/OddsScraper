@@ -11,22 +11,38 @@ import stat
 import time
 import fractions
 
+domain = 'http://www.oddschecker.com'
 
 class Match:
-    def __init__(self, teamA, oddsA, teamB, oddsB, oddsDraw, url):
+    def __init__(self, teamA, oddsA, teamB, oddsB, oddsDraw ,url):
         self.teamA = teamA
         self.oddsA = parseFraction(oddsA.replace("(","").replace(")",""))
         self.teamB = teamB
         self.oddsB = parseFraction(oddsB.replace("(","").replace(")",""))
         self.oddsDraw = parseFraction(oddsDraw.replace("(","").replace(")",""))
         self.url = url
-
+        self.get_detailed_odds()
+        
+    def get_detailed_odds(self):
+        content = getData(self.url,self.teamA + self.teamB)
+        soup = BeautifulSoup(content, 'lxml')
+        
+        bet_providers = soup.find('tr','eventTableHeader')#,'bB390 bk-logo-click') #,class_ = 'bk-logo-click')
+        print(len(bet_providers))
+        rows = soup.find_all('tr','eventTableRow')
+        
+        def get_results(row):
+            bets = []
+            for cell in row.find_all('td','o'):
+                bets.add(float(cell.attrs['data-odig'].text))
+            return bets
+        get_results(rows[0])
 def main():
 
-    domain = 'http://www.oddschecker.com/'
+
     cacheFile = "tmp"
 
-    content = getData(domain + "football/other/sweden/allsvenskan", cacheFile)
+    content = getData(domain + "/football/other/sweden/allsvenskan", cacheFile)
 
 
 
@@ -39,7 +55,7 @@ def main():
         odds = row.find_all('span', 'odds')
         teams = row.find_all('span', 'fixtures-bet-name')
 
-        Match(teams[0].text, odds[0].text, teams[2].text, odds[2].text, odds[1].text, url.attrs['href'])
+        Match(teams[0].text, odds[0].text, teams[2].text, odds[2].text, odds[1].text, domain + url.attrs['href'])
         
 
 def parseFraction(txt):
@@ -47,6 +63,7 @@ def parseFraction(txt):
 
 def getData(url, cacheFile):
     try:
+        raise NotImplementedError
         age = time.time() - os.stat(cacheFile)[stat.ST_MTIME]
         if age > 600:
             print("Cached file is old, downloading new")
